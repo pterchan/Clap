@@ -1,5 +1,5 @@
 {
-  "name": "clap",
+  "name": "@pterchan/clap",
   "version": "0.1.0",
   "description": "Claude Code Profile Manager — A TUI tool for managing multiple settings.json profiles.",
   "main": "cli.js",

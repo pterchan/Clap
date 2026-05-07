@@ -11,7 +11,7 @@ Claude Code Profile Manager — A TUI tool for managing multiple `settings.json`
 ### via npm
 
 ```bash
-npm install -g clap
+npm install -g @pterchan/clap
 ```
 
 ### via curl
