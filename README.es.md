@@ -8,6 +8,14 @@ Gestor de Perfiles de Claude Code — Una herramienta TUI para gestionar múltip
 
 ## Instalación
 
+### vía npm
+
+```bash
+npm install -g @pterchan/clap
+```
+
+### vía curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bash
 ```

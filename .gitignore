@@ -9,4 +9,5 @@ settings.local.json
 CLAUDE.md
 node_modules/
 package-lock.json
+.npmrc
 npm-debug.log*

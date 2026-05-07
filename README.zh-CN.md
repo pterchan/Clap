@@ -8,6 +8,14 @@ Claude Code 配置管理器 —— 一个在终端里管理多份 `settings.json
 
 ## 安装
 
+### 通过 npm
+
+```bash
+npm install -g @pterchan/clap
+```
+
+### 通过 curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bash
 ```

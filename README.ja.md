@@ -8,6 +8,14 @@ Claude Code プロファイルマネージャー — ターミナル上で複数
 
 ## インストール
 
+### npm 経由
+
+```bash
+npm install -g @pterchan/clap
+```
+
+### curl 経由
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bash
 ```

@@ -8,6 +8,14 @@ Claude Code 設定管理器 —— 一個在終端機裡管理多份 `settings.j
 
 ## 安裝
 
+### 透過 npm
+
+```bash
+npm install -g @pterchan/clap
+```
+
+### 透過 curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bash
 ```
