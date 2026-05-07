@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+# 运行时数据，含 API key，绝不提交
+presets/
+backups/
+settings.local.json
+CLAUDE.md
