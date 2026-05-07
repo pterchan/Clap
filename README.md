@@ -8,6 +8,14 @@ Claude Code Profile Manager — A TUI tool for managing multiple `settings.json`
 
 ## Install
 
+### via npm
+
+```bash
+npm install -g clap
+```
+
+### via curl
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bash
 ```

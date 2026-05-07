@@ -7,3 +7,6 @@ presets/
 backups/
 settings.local.json
 CLAUDE.md
+node_modules/
+package-lock.json
+npm-debug.log*

@@ -409,12 +409,16 @@ class TUI:
         fy = h - 2
         for k, lbl in keys:
             piece = f" {k} "
-            if x + len(piece) + len(lbl) + 3 >= w:
-                break
+            text = f" {lbl}  "
+            if x + len(piece) + len(text) >= w:
+                fy += 1
+                x = 0
+                if fy >= h:
+                    break
             self.safe_addstr(fy, x, piece, curses.color_pair(7) | curses.A_BOLD)
             x += len(piece)
-            self.safe_addstr(fy, x, f" {lbl}  ", curses.A_DIM)
-            x += len(lbl) + 3
+            self.safe_addstr(fy, x, text, curses.A_DIM)
+            x += len(text)
 
         if self.in_search:
             prompt = f"Filter: {self.filter_text}"
