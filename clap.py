@@ -6,6 +6,7 @@ Claude+Swap — Switch profiles in a snap (TUI)
 Manage multiple Claude Code settings.json profiles from the terminal.
 """
 import curses
+import difflib
 import json
 import os
 import shutil
@@ -14,6 +15,8 @@ import sys
 import shlex
 from pathlib import Path
 from datetime import datetime
+
+VERSION = "0.1.0"
 
 HOME = Path.home()
 CLAUDE_DIR = HOME / ".claude"
@@ -228,7 +231,6 @@ def _generate_diff(preset_path):
         preset_text = preset_path.read_text()
     except Exception as e:
         return None, f"Error reading preset: {e}"
-    import difflib
     diff = list(difflib.unified_diff(
         current_text.splitlines(keepends=True),
         preset_text.splitlines(keepends=True),
@@ -240,7 +242,7 @@ def _generate_diff(preset_path):
     return "".join(diff), None
 
 
-def show_diff(preset_path):
+def show_diff(preset_path, in_curses=False):
     diff_text, err = _generate_diff(preset_path)
     if err:
         print(err, file=sys.stderr)
@@ -249,12 +251,8 @@ def show_diff(preset_path):
         print("No differences.")
         return
     pager = os.environ.get("PAGER", "less")
-    in_curses = False
-    try:
+    if in_curses:
         curses.endwin()
-        in_curses = True
-    except Exception:
-        pass
     try:
         proc = subprocess.Popen(shlex.split(pager), stdin=subprocess.PIPE)
         proc.stdin.write(diff_text.encode("utf-8"))
@@ -313,13 +311,14 @@ class TUI:
         try:
             curses.start_color()
             curses.use_default_colors()
-            curses.init_pair(1, curses.COLOR_CYAN, -1)
-            curses.init_pair(2, curses.COLOR_GREEN, -1)
-            curses.init_pair(3, curses.COLOR_YELLOW, -1)
-            curses.init_pair(4, curses.COLOR_RED, -1)
-            curses.init_pair(5, curses.COLOR_MAGENTA, -1)
-            curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_BLUE)
-            curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_GREEN)
+            curses.init_pair(1, curses.COLOR_CYAN, -1)       # title / info
+            curses.init_pair(2, curses.COLOR_GREEN, -1)      # active / success
+            curses.init_pair(3, curses.COLOR_YELLOW, -1)     # warn / filter
+            curses.init_pair(4, curses.COLOR_RED, -1)        # error / deny
+            curses.init_pair(5, curses.COLOR_MAGENTA, -1)    # labels
+            curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_BLUE)   # selected row
+            curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_CYAN)   # key hints
+            curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_GREEN)  # active row bg
         except Exception:
             pass
 
@@ -341,13 +340,15 @@ class TUI:
             self.stdscr.refresh()
             return
 
-        title = "  Claude+Swap — Switch profiles in a snap  "
+        title = " clap — Claude Code Profile Manager "
         self.safe_addstr(0, 0, title.center(w),
-                         curses.color_pair(1) | curses.A_BOLD)
+                         curses.color_pair(1) | curses.A_BOLD | curses.A_REVERSE)
 
         active = self.cached_active
-        self.safe_addstr(1, 0, f"  Active : {active or '(none/unknown)'}"[:w - 1],
-                         curses.color_pair(2))
+        active_str = active or "(none)"
+        self.safe_addstr(1, 0, f"  Active : ", curses.A_DIM)
+        self.safe_addstr(1, 10, active_str[:w - 11],
+                         curses.color_pair(2) | curses.A_BOLD)
         self.safe_addstr(2, 0, f"  Target : {SETTINGS_FILE}"[:w - 1],
                          curses.A_DIM)
 
@@ -386,7 +387,7 @@ class TUI:
                                      curses.color_pair(6) | curses.A_BOLD)
                 elif name == active:
                     self.safe_addstr(row, 0, " " + line,
-                                     curses.color_pair(2))
+                                     curses.color_pair(8) | curses.A_BOLD)
                 else:
                     self.safe_addstr(row, 0, " " + line)
 
@@ -399,7 +400,7 @@ class TUI:
             self.draw_detail(5 + fb, detail_x, list_h, detail_w, sel, data, err)
 
         keys = [
-            ("up/dn/jk", "Move"), ("Enter", "Activate"), ("e", "Edit"),
+            ("↑↓/jk", "Move"), ("Enter", "Activate"), ("e", "Edit"),
             ("n", "New"), ("d", "Dup"), ("R", "Rename"),
             ("D", "Delete"), ("/", "Filter"), ("=", "Diff"),
             ("b", "Backups"), ("r", "Reload"), ("o", "Finder"), ("q", "Quit"),
@@ -410,9 +411,9 @@ class TUI:
             piece = f" {k} "
             if x + len(piece) + len(lbl) + 3 >= w:
                 break
-            self.safe_addstr(fy, x, piece, curses.color_pair(7))
+            self.safe_addstr(fy, x, piece, curses.color_pair(7) | curses.A_BOLD)
             x += len(piece)
-            self.safe_addstr(fy, x, f" {lbl}  ")
+            self.safe_addstr(fy, x, f" {lbl}  ", curses.A_DIM)
             x += len(lbl) + 3
 
         if self.in_search:
@@ -461,23 +462,24 @@ class TUI:
         max_tok = env.get("CLAUDE_CODE_MAX_OUTPUT_TOKENS", "(default)")
         auth_kind = "AUTH_TOKEN" if env.get("ANTHROPIC_AUTH_TOKEN") else "API_KEY"
 
+        # rows: (label, value, color_pair_for_value)
         rows = [
-            ("File:", path.name),
-            ("", ""),
-            (f"{auth_kind}:", mask_key(api_key)),
-            ("Base URL:", base_url),
-            ("Model:", model),
-            ("Small Model:", small),
-            ("Max Output:", str(max_tok)),
-            ("", ""),
-            ("Mode:", perms.get("defaultMode", "default")),
-            ("Allow:", ""),
+            ("File:", path.name, 0),
+            ("", "─" * min(w - 1, 30), curses.A_DIM),
+            (f"{auth_kind}:", mask_key(api_key), curses.color_pair(3)),
+            ("Base URL:", base_url, 0),
+            ("Model:", model, curses.color_pair(1)),
+            ("Small Model:", small, 0),
+            ("Max Output:", str(max_tok), 0),
+            ("", "─" * min(w - 1, 30), curses.A_DIM),
+            ("Mode:", perms.get("defaultMode", "default"), curses.color_pair(3)),
+            ("Allow:", "", 0),
         ]
         for a in perms.get("allow", []) or ["(none)"]:
-            rows.append(("", "  + " + str(a)))
-        rows.append(("Deny:", ""))
+            rows.append(("", "  + " + str(a), curses.color_pair(2)))
+        rows.append(("Deny:", "", 0))
         for d in perms.get("deny", []) or ["(none)"]:
-            rows.append(("", "  - " + str(d)))
+            rows.append(("", "  - " + str(d), curses.color_pair(4)))
 
         extras = {k: v for k, v in env.items() if k not in {
             "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
@@ -486,21 +488,21 @@ class TUI:
             "CLAUDE_CODE_MAX_OUTPUT_TOKENS"
         }}
         if extras:
-            rows.append(("", ""))
-            rows.append(("Extra Env:", ""))
+            rows.append(("", "─" * min(w - 1, 30), curses.A_DIM))
+            rows.append(("Extra Env:", "", 0))
             for k, v in extras.items():
-                rows.append(("", f"  {k}={v}"))
+                rows.append(("", f"  {k}={v}", 0))
 
-        for i, (label, value) in enumerate(rows):
+        for i, (label, value, attr) in enumerate(rows):
             if i >= h - 1:
                 break
             if label:
                 self.safe_addstr(y + i, x, label[:w],
                                  curses.color_pair(5) | curses.A_BOLD)
                 self.safe_addstr(y + i, x + LABEL_WIDTH,
-                                 str(value)[:max(0, w - LABEL_WIDTH)])
+                                 str(value)[:max(0, w - LABEL_WIDTH)], attr)
             else:
-                self.safe_addstr(y + i, x, str(value)[:w])
+                self.safe_addstr(y + i, x, str(value)[:w], attr)
 
     def activate_selected(self):
         if not self.presets:
@@ -580,30 +582,30 @@ class TUI:
                 target = PRESETS_DIR / f"{name}.json"
                 if target.exists():
                     self.set_message(f"'{name}' already exists", "error")
-                else:
-                    if self.input_mode == MODE_NEW:
-                        target.write_text(
-                            json.dumps(DEFAULT_TEMPLATE, indent=2,
-                                       ensure_ascii=False))
-                        _chmod600(target)
-                        self.refresh()
-                        self._select_by_path(target)
-                        open_editor(target)
-                        self.set_message(f"Created: {name}", "success")
-                    elif self.input_mode == MODE_DUP:
-                        src = self.presets[self.selected]
-                        shutil.copy2(src, target)
-                        _chmod600(target)
-                        self.refresh()
-                        self._select_by_path(target)
-                        self.set_message(f"Duplicated to: {name}", "success")
-                    elif self.input_mode == MODE_RENAME:
-                        src = self.presets[self.selected]
-                        src.rename(target)
-                        _chmod600(target)
-                        self.refresh()
-                        self._select_by_path(target)
-                        self.set_message(f"Renamed to: {name}", "success")
+                    return
+                if self.input_mode == MODE_NEW:
+                    target.write_text(
+                        json.dumps(DEFAULT_TEMPLATE, indent=2,
+                                   ensure_ascii=False))
+                    _chmod600(target)
+                    self.refresh()
+                    self._select_by_path(target)
+                    open_editor(target)
+                    self.set_message(f"Created: {name}", "success")
+                elif self.input_mode == MODE_DUP:
+                    src = self.presets[self.selected]
+                    shutil.copy2(src, target)
+                    _chmod600(target)
+                    self.refresh()
+                    self._select_by_path(target)
+                    self.set_message(f"Duplicated to: {name}", "success")
+                elif self.input_mode == MODE_RENAME:
+                    src = self.presets[self.selected]
+                    src.rename(target)
+                    _chmod600(target)
+                    self.refresh()
+                    self._select_by_path(target)
+                    self.set_message(f"Renamed to: {name}", "success")
             self.input_mode = None
             self.input_buffer = ""
         elif key == 27:
@@ -626,7 +628,7 @@ class TUI:
     def diff_selected(self):
         if not self.presets:
             return
-        show_diff(self.presets[self.selected])
+        show_diff(self.presets[self.selected], in_curses=True)
         self.set_message("Diff viewed", "info")
 
     def enter_search(self):
@@ -663,19 +665,53 @@ class TUI:
         if not backups:
             self.set_message("No backups available", "warn")
             return
-        curses.endwin()
-        print("Backups (most recent first):")
-        for i, b in enumerate(backups[:20], 1):
-            print(f"  {i}: {b.name}")
-        print("\nTo restore a backup, run:")
-        print(f"  clap restore <name>")
-        print(f"  e.g. clap restore {backups[0].name}")
-        input("\nPress Enter to continue...")
+        sel = 0
+        scroll = 0
+        while True:
+            self.stdscr.erase()
+            h, w = self.stdscr.getmaxyx()
+            self.safe_addstr(0, 0, " Backups (Enter=restore, Esc=back) ".center(w),
+                             curses.color_pair(1) | curses.A_BOLD | curses.A_REVERSE)
+            visible = h - 4
+            if sel < scroll:
+                scroll = sel
+            elif sel >= scroll + visible:
+                scroll = sel - visible + 1
+            for i, b in enumerate(backups[scroll:scroll + visible]):
+                idx = scroll + i
+                line = b.name[:w - 2]
+                if idx == sel:
+                    self.safe_addstr(2 + i, 0, (" " + line).ljust(w - 1),
+                                     curses.color_pair(6) | curses.A_BOLD)
+                else:
+                    self.safe_addstr(2 + i, 0, "  " + line)
+            self.safe_addstr(h - 1, 0,
+                             f" {len(backups)} backups — ↑↓/jk move  Enter restore  Esc back "[:w - 1],
+                             curses.A_DIM)
+            self.stdscr.refresh()
+            key = self.stdscr.getch()
+            if key in (ord('q'), 27):
+                break
+            elif key in (curses.KEY_UP, ord('k')) and sel > 0:
+                sel -= 1
+            elif key in (curses.KEY_DOWN, ord('j')) and sel < len(backups) - 1:
+                sel += 1
+            elif key in (10, 13):
+                b = backups[sel]
+                self.confirm_action = (
+                    f"Restore '{b.name}'? press y to confirm, any other to cancel ",
+                    lambda bp=b: self._do_restore(bp)
+                )
+                break
+        self.refresh()
+        self.update_active()
+
+    def _do_restore(self, backup_path):
         try:
-            curses.doupdate()
-        except Exception:
-            pass
-        self.set_message("Backup list printed to terminal", "info")
+            restore_backup(backup_path)
+            self.set_message(f"Restored: {backup_path.name}", "success")
+        except Exception as e:
+            self.set_message(f"Restore failed: {e}", "error")
 
     def loop(self):
         try:
@@ -759,6 +795,50 @@ class TUI:
                 pass
 
 
+def _cmd_update():
+    import urllib.request
+    import tempfile
+    REPO = "pterchan/clap"
+    BRANCH = "main"
+    url = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/clap.py"
+    print(f"Fetching latest clap from {url} ...")
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            new_src = resp.read().decode("utf-8")
+    except Exception as e:
+        print(f"Update failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Extract VERSION from downloaded source
+    remote_version = None
+    for line in new_src.splitlines():
+        if line.startswith("VERSION"):
+            try:
+                remote_version = line.split("=")[1].strip().strip('"').strip("'")
+            except Exception:
+                pass
+            break
+
+    if remote_version and remote_version == VERSION:
+        print(f"Already up to date (v{VERSION}).")
+        return
+
+    self_path = Path(sys.argv[0]).resolve()
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+        tmp.write(new_src)
+        tmp_path = Path(tmp.name)
+    try:
+        shutil.copy2(tmp_path, self_path)
+        os.chmod(self_path, 0o755)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    if remote_version:
+        print(f"Updated v{VERSION} → v{remote_version}")
+    else:
+        print("Updated successfully.")
+
+
 def cli_main():
     init_dirs()
     if len(sys.argv) > 1:
@@ -807,6 +887,9 @@ def cli_main():
             restore_backup(target)
             print(f"Restored: {target.name}")
             return
+        if cmd in ("-V", "--version", "version"):
+            print(f"clap v{VERSION}")
+            return
         if cmd in ("-h", "--help", "help"):
             print("Usage:")
             print("  clap                   open TUI")
@@ -816,8 +899,12 @@ def cli_main():
             print("  clap diff <name>       diff preset against current settings")
             print("  clap backups           list available backups")
             print("  clap restore <name>    restore a backup (name or timestamp)")
+            print("  clap update            update clap to the latest version")
             print(f"\nPresets dir: {PRESETS_DIR}")
             print(f"Backups dir: {BACKUP_DIR}")
+            return
+        if cmd == "update":
+            _cmd_update()
             return
     curses.wrapper(lambda s: TUI(s).loop())
 

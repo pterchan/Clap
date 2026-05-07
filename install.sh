@@ -135,9 +135,25 @@ if [ ! -f "$SOURCE" ]; then
   err "clap.py not found at ${SOURCE}."
 fi
 
+IS_UPDATE=false
+if [ -f "$TARGET" ]; then
+  OLD_VER=$("$PYTHON" "$TARGET" --version 2>/dev/null || true)
+  IS_UPDATE=true
+fi
+
 cp "$SOURCE" "$TARGET"
 chmod +x "$TARGET"
-ok "Installed → ${TARGET}"
+
+if $IS_UPDATE; then
+  NEW_VER=$("$PYTHON" "$TARGET" --version 2>/dev/null || true)
+  if [ "$OLD_VER" = "$NEW_VER" ] && [ -n "$NEW_VER" ]; then
+    ok "Already up to date (${NEW_VER}) → ${TARGET}"
+  else
+    ok "Updated ${OLD_VER:-(unknown)} → ${NEW_VER:-(unknown)}: ${TARGET}"
+  fi
+else
+  ok "Installed → ${TARGET}"
+fi
 
 # ── Seed example presets ──────────────────────────────────────────────
 "$PYTHON" "$TARGET" ls >/dev/null 2>&1 || true
@@ -153,6 +169,7 @@ if "$PYTHON" "$TARGET" ls >/dev/null 2>&1; then
   echo "    clap use <name>      switch profile"
   echo "    clap diff <name>     compare with current"
   echo "    clap restore <name>  rollback a backup"
+  echo "    clap update          update to latest version"
   echo
 else
   warn "Installed but a quick check failed — this may be fine."
