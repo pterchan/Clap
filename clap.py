@@ -16,7 +16,7 @@ import shlex
 from pathlib import Path
 from datetime import datetime
 
-VERSION = "0.1.0"
+VERSION = "0.1.2"
 
 HOME = Path.home()
 CLAUDE_DIR = HOME / ".claude"
