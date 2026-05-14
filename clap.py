@@ -407,7 +407,7 @@ def _write_toml_simple(path, data):
 
 def _strip_json5_comments(text):
     """Remove // line comments and trailing commas for JSON5 compat."""
-    text = re.sub(r'//[^\n]*', '', text)
+    text = re.sub(r'(?<![:/])//[^\n]*', '', text)
     text = re.sub(r',\s*([}\]])', r'\1', text)
     return text
 
@@ -429,8 +429,7 @@ def init_dirs():
     if not any(claude.presets_dir.glob("*.json")):
         for name, data in claude.examples.items():
             p = claude.presets_dir / f"{name}.json"
-            p.write_text(json.dumps(data, indent=2, ensure_ascii=False))
-            _chmod600(p)
+            _atomic_write(p, json.dumps(data, indent=2, ensure_ascii=False))
     # Seed examples for other apps
     for app_name in ("codex", "gemini", "opencode"):
         app = APPS[app_name]
@@ -508,7 +507,7 @@ def _prune_backups_lazy(max_keep=MAX_BACKUPS):
         backups = list(app.backup_dir.glob("settings_*.json"))
         if len(backups) <= max_keep + 5:
             return
-        backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        backups.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
         for old in backups[max_keep:]:
             old.unlink()
     except Exception as e:
@@ -532,7 +531,7 @@ def get_active():
 def list_backups():
     app = _app()
     return sorted(app.backup_dir.glob("settings_*.json"),
-                  key=lambda p: p.stat().st_mtime, reverse=True)
+                  key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
 
 
 def _backup_current():
@@ -542,8 +541,7 @@ def _backup_current():
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = app.backup_dir / f"settings_{ts}.json"
     try:
-        shutil.copy2(app.settings_file, path)
-        _chmod600(path)
+        _atomic_write(path, app.settings_file.read_text())
         return path
     except Exception:
         return None
@@ -554,10 +552,8 @@ def restore_backup(backup_path):
         raise FileNotFoundError(backup_path)
     app = _app()
     _backup_current()
-    shutil.copy2(backup_path, app.settings_file)
-    _chmod600(app.settings_file)
-    app.active_file.write_text("(restored)")
-    _chmod600(app.active_file)
+    _atomic_write(app.settings_file, backup_path.read_text())
+    _atomic_write(app.active_file, "(restored)")
     _prune_backups_lazy()
 
 
@@ -583,8 +579,7 @@ def activate(preset_path):
         _atomic_write(app.settings_file, serialized)
         _chmod600(app.settings_file)
 
-    app.active_file.write_text(preset_path.stem)
-    _chmod600(app.active_file)
+    _atomic_write(app.active_file, preset_path.stem)
     _prune_backups_lazy()
 
 
@@ -623,7 +618,11 @@ def open_editor(path):
     editor = os.environ.get("EDITOR", "vi")
     curses.endwin()
     try:
-        cmd = shlex.split(editor) + [str(path)]
+        try:
+            cmd = shlex.split(editor)
+        except ValueError:
+            cmd = ["vi"]
+        cmd = cmd + [str(path)]
         subprocess.run(cmd)
     except Exception as e:
         print(f"Error launching editor: {e}", file=sys.stderr)
@@ -671,7 +670,11 @@ def show_diff(preset_path, in_curses=False):
         curses = _curses_import()
         curses.endwin()
     try:
-        proc = subprocess.Popen(shlex.split(pager), stdin=subprocess.PIPE)
+        try:
+            pager_cmd = shlex.split(pager)
+        except ValueError:
+            pager_cmd = ["less"]
+        proc = subprocess.Popen(pager_cmd, stdin=subprocess.PIPE)
         proc.stdin.write(diff_text.encode("utf-8"))
         proc.stdin.close()
         proc.wait()
@@ -963,7 +966,9 @@ class TUI:
             rows.append(("", "─" * min(w - 1, 30), curses.A_DIM))
             rows.append(("Extra Env:", "", 0))
             for k, v in extras.items():
-                rows.append(("", f"  {k}={v}", 0))
+                _sens = {"KEY", "TOKEN", "SECRET", "AUTH"}
+                is_s = any(s in k.upper() for s in _sens)
+                rows.append(("", f"  {k}={mask_key(v) if is_s else v}", 0))
 
         for i, (label, value, attr) in enumerate(rows):
             if i >= h - 1:
@@ -1118,6 +1123,9 @@ class TUI:
             if name:
                 ext = _preset_ext(app)
                 target = app.presets_dir / f"{name}{ext}"
+                if not str(target.resolve()).startswith(str(app.presets_dir.resolve())):
+                    self.set_message("Invalid preset name", "error")
+                    return
                 if target.exists():
                     self.set_message(f"'{name}' already exists", "error")
                     return
@@ -1130,8 +1138,7 @@ class TUI:
                     self.set_message(f"Created: {name}", "success")
                 elif self.input_mode == MODE_DUP:
                     src = self.presets[self.selected]
-                    shutil.copy2(src, target)
-                    _chmod600(target)
+                    _atomic_write(target, src.read_text())
                     self.refresh()
                     self._select_by_path(target)
                     self.set_message(f"Duplicated to: {name}", "success")
@@ -1305,6 +1312,9 @@ class TUI:
         name = provider["name"]
         ext = _preset_ext(app)
         target = app.presets_dir / f"{name}{ext}"
+        if target.exists():
+            self.set_message(f"'{name}' already exists — delete it first", "error")
+            return
         if app.fmt == "env":
             data = {k: v for k, v in provider.items() if k != "name"}
         elif app.name == "codex":
@@ -1335,7 +1345,7 @@ class TUI:
             return
         app = _app()
         try:
-            settings = json.loads(app.settings_file.read_text()) if app.settings_file.exists() else {}
+            settings = _read_settings(app) if app.settings_file.exists() else {}
         except Exception as e:
             self.set_message(f"Cannot read settings: {e}", "error")
             return
@@ -1572,10 +1582,11 @@ def _cmd_update():
         tmp.write(new_src)
         tmp_path = Path(tmp.name)
     try:
-        shutil.copy2(tmp_path, self_path)
-        os.chmod(self_path, 0o755)
-    finally:
+        os.chmod(tmp_path, 0o755)
+        tmp_path.replace(self_path)
+    except Exception:
         tmp_path.unlink(missing_ok=True)
+        raise
 
     if remote_version:
         print(f"Updated v{VERSION} → v{remote_version}")
@@ -1602,6 +1613,9 @@ def cli_main():
         if cmd == "use" and len(sys.argv) >= 3:
             ext = _preset_ext(app)
             target = app.presets_dir / f"{sys.argv[2]}{ext}"
+            if not str(target.resolve()).startswith(str(app.presets_dir.resolve())):
+                print(f"Invalid preset name: {sys.argv[2]}")
+                sys.exit(1)
             # Also try .json for backward compat
             if not target.exists() and ext != ".json":
                 target = app.presets_dir / f"{sys.argv[2]}.json"
@@ -1617,6 +1631,9 @@ def cli_main():
         if cmd == "diff" and len(sys.argv) >= 3:
             ext = _preset_ext(app)
             target = app.presets_dir / f"{sys.argv[2]}{ext}"
+            if not str(target.resolve()).startswith(str(app.presets_dir.resolve())):
+                print(f"Invalid preset name: {sys.argv[2]}")
+                sys.exit(1)
             if not target.exists() and ext != ".json":
                 target = app.presets_dir / f"{sys.argv[2]}.json"
             if not target.exists():
@@ -1638,6 +1655,9 @@ def cli_main():
                 target = app.backup_dir / name
             else:
                 target = app.backup_dir / f"settings_{name}.json"
+            if not str(target.resolve()).startswith(str(app.backup_dir.resolve())):
+                print(f"Invalid backup name: {name}")
+                sys.exit(1)
             if not target.exists():
                 print(f"Backup not found: {name}")
                 sys.exit(1)
@@ -1677,8 +1697,7 @@ def cli_main():
                 sys.exit(1)
             _cur_app_name = target
             try:
-                DEFAULT_APP_FILE.write_text(target)
-                _chmod600(DEFAULT_APP_FILE)
+                _atomic_write(DEFAULT_APP_FILE, target)
             except Exception:
                 pass
             print(f"Switched to {APPS[target].label} ({target})")
