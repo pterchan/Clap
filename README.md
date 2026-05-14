@@ -2,9 +2,20 @@
 
 **English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-Multi-Tool Profile Manager — A lightweight TUI tool for managing config profiles across Claude Code, Codex, Gemini CLI, and OpenCode.
+⚡️ Switch between DeepSeek, Anthropic, and SiliconFlow in Claude Code with one click!
+
+A lightning-fast TUI profile & MCP server manager for Claude Code, Codex, Gemini CLI, and OpenCode. Stop manually editing `.json` and `.env` files.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Features
+
+- 🚀 **Zero-Config Switching:** Instantly swap profiles for Claude Code, Gemini CLI, and more.
+- 🐳 **Built-in 17+ Provider Presets:** Pre-charged setups for **DeepSeek V4**, Kimi, OpenRouter, SiliconFlow, AWS Bedrock, Azure, Groq, Together AI, and more.
+- 🔌 **Live MCP Manager:** Add/remove Model Context Protocol servers on the fly with atomic writes.
+- 🛡️ **Safety First:** Smart activation warnings to prevent overwriting un-backed-up credentials.
+- 🖱️ **Terminal Mouse Support:** Full mouse navigation, clicking, and scrolling inside your terminal.
+- 🌐 **Multi-language:** English, 简体中文, 繁體中文, 日本語 — auto-detected or one command to switch.
 
 ## Install
 
@@ -38,6 +49,7 @@ clap backups           # list backups
 clap restore <name>    # restore a backup
 clap apps              # list supported tools
 clap app <name>        # switch default app (claude/codex/gemini/opencode)
+clap lang [code]       # show/set language (zh-CN, zh-TW, ja, en)
 ```
 
 ### Supported Tools

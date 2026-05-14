@@ -2,9 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | **한국어** | [日本語](README.ja.md) | [Español](README.es.md)
 
-멀티 도구 프로필 관리자 — Claude Code, Codex, Gemini CLI, OpenCode의 설정 프로필을 관리하는 경량 TUI 도구입니다.
+⚡️ Claude Code에서 DeepSeek, Anthropic, SiliconFlow를 원클릭으로 전환하세요!
+
+Claude Code, Codex, Gemini CLI, OpenCode를 위한 초고속 TUI 프로필 & MCP 서버 관리자입니다. 더 이상 `.json`과 `.env` 파일을 수동으로 편집하지 마세요.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## ✨ 기능
+
+- 🚀 **제로 설정 전환:** Claude Code, Gemini CLI 등에서 프로필을 즉시 전환합니다.
+- 🐳 **17개 이상의 내장 제공자プリセット:** **DeepSeek V4**, Kimi, OpenRouter, SiliconFlow, AWS Bedrock, Azure, Groq, Together AI 등이 사전 설정되어 있습니다.
+- 🔌 **실시간 MCP 관리:** Model Context Protocol 서버를 즉시 추가/제거하며 원자적 쓰기로 안전하게 저장합니다.
+- 🛡️ **안전 최우선:** 백업되지 않은 자격 증명 덮어쓰기를 방지하는 스마트 활성화 경고.
+- 🖱️ **터미널 마우스 지원:** 터미널 내에서 완전한 마우스 네비게이션, 클릭 및 스크롤.
+- 🌐 **다국어 지원:** English, 简体中文, 繁體中文, 日本語 — 자동 감지 또는 한 줄 명령어로 전환.
 
 ## 설치
 
@@ -38,6 +49,7 @@ clap backups           # 백업 목록
 clap restore <name>    # 백업 복원
 clap apps              # 지원하는 도구 목록
 clap app <name>        # 기본 도구 전환 (claude/codex/gemini/opencode)
+clap lang [code]       # 언어 표시/설정 (zh-CN, zh-TW, ja, en)
 ```
 
 ### 지원하는 도구

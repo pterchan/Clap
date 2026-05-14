@@ -2,9 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | **Español**
 
-Gestor de Perfiles Multi-Herramienta — Una herramienta TUI ligera para gestionar perfiles de configuración de Claude Code, Codex, Gemini CLI y OpenCode.
+⚡️ ¡Cambia entre DeepSeek, Anthropic y SiliconFlow en Claude Code con un clic!
+
+Un gestor TUI ultrarrápido de perfiles y servidores MCP para Claude Code, Codex, Gemini CLI y OpenCode. Deja de editar manualmente archivos `.json` y `.env`.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## ✨ Características
+
+- 🚀 **Cambio sin configuración:** Intercambia perfiles al instante para Claude Code, Gemini CLI y más.
+- 🐳 **17+ presets de proveedores integrados:** Configuraciones precargadas para **DeepSeek V4**, Kimi, OpenRouter, SiliconFlow, AWS Bedrock, Azure, Groq, Together AI, etc.
+- 🔌 **Gestor MCP en vivo:** Añade/elimina servidores Model Context Protocol al vuelo con escrituras atómicas.
+- 🛡️ **Seguridad primero:** Alertas inteligentes al activar para evitar sobrescribir credenciales sin respaldo.
+- 🖱️ **Soporte de ratón en terminal:** Navegación completa con ratón, clics y desplazamiento dentro de la terminal.
+- 🌐 **Multi-idioma:** English, 简体中文, 繁體中文, 日本語 — detección automática o cambio con un comando.
 
 ## Instalación
 
@@ -38,6 +49,7 @@ clap backups           # listar copias de seguridad
 clap restore <nombre>  # restaurar copia de seguridad
 clap apps              # listar herramientas soportadas
 clap app <nombre>      # cambiar herramienta por defecto (claude/codex/gemini/opencode)
+clap lang [code]       # mostrar/cambiar idioma (zh-CN, zh-TW, ja, en)
 ```
 
 ### Herramientas Soportadas

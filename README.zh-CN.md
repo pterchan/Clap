@@ -2,9 +2,20 @@
 
 [English](README.md) | **简体中文** | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-多工具配置管理器 —— 一个轻量级 TUI 工具，管理 Claude Code、Codex、Gemini CLI 和 OpenCode 的配置文件。
+⚡️ 在 Claude Code 中一键切换 DeepSeek、Anthropic、硅基流动！
+
+轻量级光速 TUI 配置 & MCP 服务器管理器，支持 Claude Code、Codex、Gemini CLI 和 OpenCode。告别手动编辑 `.json` 和 `.env` 文件。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## ✨ 特性
+
+- 🚀 **零配置切换：** 一键在 Claude Code、Gemini CLI 等多个工具间切换配置。
+- 🐳 **内置 17+ 供应商预设：** 预配置了 **DeepSeek V4**、Kimi、OpenRouter、硅基流动、AWS Bedrock、Azure、Groq、Together AI 等。
+- 🔌 **实时 MCP 管理：** 随时添加/删除 Model Context Protocol 服务器，原子写入保障安全。
+- 🛡️ **安全优先：** 智能激活警告，防止覆盖未备份的凭据。
+- 🖱️ **终端鼠标支持：** 终端内完整鼠标导航、点击和滚动。
+- 🌐 **多语言：** English, 简体中文, 繁體中文, 日本語 — 自动检测或一键切换。
 
 ## 安装
 
@@ -38,6 +49,7 @@ clap backups           # 列出备份
 clap restore <name>    # 恢复备份
 clap apps              # 列出支持的工具
 clap app <name>        # 切换默认工具（claude/codex/gemini/opencode）
+clap lang [code]       # 显示/设置语言（zh-CN, zh-TW, ja, en）
 ```
 
 ### 支持的工具
