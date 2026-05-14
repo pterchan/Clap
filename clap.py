@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 HOME = Path.home()
 CLAP_DIR = HOME / ".clap"
@@ -607,6 +607,134 @@ def parse_preset(path):
         return None, str(e)
 
 
+def _is_placeholder(v):
+    """Check if a value is a placeholder/default (not a real credential)."""
+    if not v or not isinstance(v, str):
+        return True
+    v = v.strip()
+    if not v:
+        return True
+    if "..." in v:
+        return True
+    if "xxxxx" in v:
+        return True
+    if v.startswith("your-"):
+        return True
+    return False
+
+
+def _extract_creds(data, app):
+    """Extract api_keys, base_urls, and models from parsed preset data."""
+    api_keys = set()
+    base_urls = set()
+    models = set()
+
+    if app.fmt == "env":
+        v = data.get("GEMINI_API_KEY", "") if isinstance(data, dict) else ""
+        if not _is_placeholder(v):
+            api_keys.add(v)
+        v = data.get("GOOGLE_GEMINI_BASE_URL", "") if isinstance(data, dict) else ""
+        if not _is_placeholder(v):
+            base_urls.add(v)
+        v = data.get("GEMINI_MODEL", "") if isinstance(data, dict) else ""
+        if not _is_placeholder(v):
+            models.add(v)
+    elif app.name == "codex":
+        auth = data.get("auth", {}) if isinstance(data, dict) else {}
+        config = data.get("config", {}) if isinstance(data, dict) else {}
+        v = auth.get("OPENAI_API_KEY", "")
+        if not _is_placeholder(v):
+            api_keys.add(v)
+        v = config.get("base_url", "")
+        if not _is_placeholder(v):
+            base_urls.add(v)
+        v = config.get("model", "")
+        if not _is_placeholder(v):
+            models.add(v)
+    elif app.name == "opencode":
+        providers = data.get("providers", {}) if isinstance(data, dict) else {}
+        for pdata in providers.values():
+            if isinstance(pdata, dict):
+                v = pdata.get("api_key", "")
+                if not _is_placeholder(v):
+                    api_keys.add(v)
+                v = pdata.get("base_url", "")
+                if not _is_placeholder(v):
+                    base_urls.add(v)
+                v = pdata.get("model", "")
+                if not _is_placeholder(v):
+                    models.add(v)
+    else:
+        # claude (fmt="json")
+        env = data.get("env", {}) if isinstance(data, dict) else {}
+        v = env.get("ANTHROPIC_API_KEY") or env.get("ANTHROPIC_AUTH_TOKEN", "")
+        if not _is_placeholder(v):
+            api_keys.add(v)
+        v = env.get("ANTHROPIC_BASE_URL", "")
+        if not _is_placeholder(v):
+            base_urls.add(v)
+        v = env.get("ANTHROPIC_MODEL", "")
+        if not _is_placeholder(v):
+            models.add(v)
+
+    return {"api_keys": api_keys, "base_urls": base_urls, "models": models}
+
+
+def _analyze_preset_overlap(target_path):
+    """Compare target preset against stored presets for credential overlap.
+
+    Returns (warn_type, matching_name) where warn_type is:
+      'partial' — some fields match but not all (same provider, diff account)
+      'none'    — no base_url/api_key match with any stored preset
+      None      — no warning needed
+    """
+    app = _app()
+    target_data, err = parse_preset(target_path)
+    if err or target_data is None:
+        return None, None
+
+    target_creds = _extract_creds(target_data, app)
+    other_presets = [p for p in list_presets()
+                     if p.resolve() != target_path.resolve()]
+
+    if not other_presets:
+        return None, None
+
+    found_any_url_or_key = False
+
+    for p in other_presets:
+        other_data, err = parse_preset(p)
+        if err or other_data is None:
+            continue
+        other_creds = _extract_creds(other_data, app)
+
+        key_match = bool(target_creds["api_keys"] & other_creds["api_keys"])
+        url_match = bool(target_creds["base_urls"] & other_creds["base_urls"])
+        model_match = bool(target_creds["models"] & other_creds["models"])
+
+        if key_match or url_match:
+            found_any_url_or_key = True
+
+        any_match = key_match or url_match or model_match
+
+        # all_match: every field present in BOTH must match
+        all_match = True
+        if target_creds["api_keys"] and other_creds["api_keys"] and not key_match:
+            all_match = False
+        if target_creds["base_urls"] and other_creds["base_urls"] and not url_match:
+            all_match = False
+        if target_creds["models"] and other_creds["models"] and not model_match:
+            all_match = False
+
+        if any_match and not all_match:
+            return "partial", p.stem
+
+    if not found_any_url_or_key:
+        return "none", None
+
+    return None, None
+
+
 def _curses_import():
     """Lazy import curses — only when entering TUI."""
     import curses
@@ -710,6 +838,11 @@ class TUI:
         self.in_search = False
         self.cached_active = None
         self._detail_cache = {}  # path -> (mtime, data, err)
+        self._tab_hitboxes = []   # (row, x_start, x_end, app_name)
+        self._key_hitboxes = []   # (row, x_start, x_end, key)
+        self._mouse_quit = False
+        curses = _curses_import()
+        curses.mousemask(curses.ALL_MOUSE_EVENTS)
         self.refresh()
 
     def refresh(self):
@@ -771,9 +904,11 @@ class TUI:
                          curses.color_pair(1) | curses.A_BOLD | curses.A_REVERSE)
 
         # Row 1: App tabs
+        self._tab_hitboxes = []
         x = 2
         for app_name in APP_ORDER:
             label = f" {APPS[app_name].label} "
+            self._tab_hitboxes.append((1, x, x + len(label), app_name))
             if app_name == _cur_app_name:
                 self.safe_addstr(1, x, label,
                                  curses.color_pair(2) | curses.A_BOLD | curses.A_REVERSE)
@@ -865,6 +1000,7 @@ class TUI:
             keys.append(("m", "MCP"))
         keys.append(("q", "Quit"))
 
+        self._key_hitboxes = []
         x = 0
         fy = h - 2
         for k, lbl in keys:
@@ -875,6 +1011,7 @@ class TUI:
                 x = 0
                 if fy >= h:
                     break
+            self._key_hitboxes.append((fy, x, x + len(piece) + len(text), k))
             self.safe_addstr(fy, x, piece, curses.color_pair(7) | curses.A_BOLD)
             x += len(piece)
             self.safe_addstr(fy, x, text, curses.A_DIM)
@@ -1037,8 +1174,26 @@ class TUI:
         if not self.presets:
             return
         p = self.presets[self.selected]
+        warn_type, match_name = _analyze_preset_overlap(p)
+        if warn_type == "partial":
+            self.confirm_action = (
+                f"Shares provider with '{match_name}' but different credentials "
+                f"— proceed anyway? (y/N) ",
+                lambda: self._do_activate(p)
+            )
+        elif warn_type == "none":
+            self.confirm_action = (
+                "New provider — save current config as a preset before "
+                "losing it? Proceed anyway? (y/N) ",
+                lambda: self._do_activate(p)
+            )
+        else:
+            self._do_activate(p)
+
+    def _do_activate(self, p):
         try:
             activate(p)
+            self.update_active()
             self.set_message(f"Activated: {p.stem}  (previous backed up)",
                              "success")
         except Exception as e:
@@ -1159,6 +1314,93 @@ class TUI:
             self.input_buffer = self.input_buffer[:-1]
         elif 32 <= key < 127:
             self.input_buffer += chr(key)
+
+    def _mouse_dispatch(self, key):
+        if key in ("↑↓/jk",):
+            return
+        if key == "Enter":
+            self.activate_selected()
+            self.update_active()
+        elif key == "e":
+            self.edit_selected()
+        elif key == "n":
+            self.new_preset()
+        elif key == "d":
+            self.duplicate_selected()
+        elif key == "R":
+            self.rename_selected()
+        elif key == "D":
+            self.delete_selected()
+        elif key == "/":
+            self.enter_search()
+        elif key == "=":
+            self.diff_selected()
+        elif key == "b":
+            self.open_backups()
+        elif key == "r":
+            self.refresh()
+            self.update_active()
+            self.set_message("Reloaded", "info")
+        elif key == "o":
+            self.open_dir()
+        elif key == "Tab":
+            idx = APP_ORDER.index(_cur_app_name)
+            self.switch_app(APP_ORDER[(idx + 1) % len(APP_ORDER)])
+        elif key == "p":
+            self.open_provider_picker()
+        elif key == "m":
+            self.open_mcp_manager()
+        elif key == "q":
+            self._mouse_quit = True
+
+    def handle_mouse(self):
+        curses = _curses_import()
+        try:
+            _, mx, my, _, bstate = curses.getmouse()
+        except Exception:
+            return
+
+        if bstate & curses.BUTTON1_CLICKED:
+            pass
+        elif hasattr(curses, "BUTTON4_PRESSED") and (bstate & curses.BUTTON4_PRESSED):
+            if self.selected > 0:
+                self.selected -= 1
+            return
+        elif hasattr(curses, "BUTTON5_PRESSED") and (bstate & curses.BUTTON5_PRESSED):
+            if self.selected < len(self.presets) - 1:
+                self.selected += 1
+            return
+        else:
+            return
+
+        h, w = self.stdscr.getmaxyx()
+
+        # Tab clicks (row 1)
+        if my == 1:
+            for _row, xs, xe, app_name in self._tab_hitboxes:
+                if xs <= mx < xe:
+                    self.switch_app(app_name)
+                    return
+
+        # Key hint clicks (bottom rows)
+        for row, xs, xe, key in self._key_hitboxes:
+            if my == row and xs <= mx < xe:
+                self._mouse_dispatch(key)
+                return
+
+        # Preset list clicks
+        if self.presets:
+            fb = 1 if self.filter_text else 0
+            header_row = 5 + fb
+            list_h = h - 7 - fb
+            list_w = max(MIN_LIST_W, w // 3)
+            visible = min(list_h - 1, len(self.presets) - self.scroll)
+            if 0 <= mx < list_w and header_row + 1 <= my < header_row + 1 + visible:
+                idx = self.scroll + (my - (header_row + 1))
+                if 0 <= idx < len(self.presets):
+                    self.selected = idx
+                    self.activate_selected()
+                    self.update_active()
 
     def handle_confirm(self, key):
         _, action = self.confirm_action
@@ -1475,6 +1717,13 @@ class TUI:
             except KeyboardInterrupt:
                 break
 
+            if key == curses.KEY_MOUSE:
+                if not self.in_search and not self.input_mode and not self.confirm_action:
+                    self.handle_mouse()
+                    if self._mouse_quit:
+                        break
+                continue
+
             if self.in_search:
                 try:
                     curses.curs_set(1)
@@ -1622,10 +1871,34 @@ def cli_main():
             if not target.exists():
                 print(f"Preset not found: {sys.argv[2]}")
                 sys.exit(1)
+            warn_type, match_name = _analyze_preset_overlap(target)
+            if warn_type == "partial":
+                print(f"Warning: Shares provider with '{match_name}' but "
+                      f"has different credentials.", file=sys.stderr)
+                print("Your current config may belong to a different account "
+                      "of the same provider.", file=sys.stderr)
+                try:
+                    resp = input("Proceed anyway? (y/N): ").strip().lower()
+                except EOFError:
+                    resp = ""
+                if resp != "y":
+                    print("Cancelled.")
+                    return
+            elif warn_type == "none":
+                print("Warning: No matching provider found in stored presets.",
+                      file=sys.stderr)
+                print("Your current config will be lost. Consider saving it "
+                      "as a new preset first.", file=sys.stderr)
+                try:
+                    resp = input("Proceed anyway? (y/N): ").strip().lower()
+                except EOFError:
+                    resp = ""
+                if resp != "y":
+                    print("Cancelled.")
+                    return
             activate(target)
             print(f"Activated: {sys.argv[2]}")
             return
-        if cmd == "current":
             print(get_active() or "(unknown)")
             return
         if cmd == "diff" and len(sys.argv) >= 3:
