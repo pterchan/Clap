@@ -62,6 +62,25 @@ clap app <nombre>      # cambiar herramienta por defecto (claude/codex/gemini/op
 | `Tab` | Cambiar herramienta | `p` | Presets integrados |
 | `m` | Gestor MCP | `q` | Salir |
 
+### Soporte para Ratón
+
+La TUI soporta interacción con ratón:
+- **Clic** en una pestaña (fila 1) para cambiar de herramienta
+- **Clic** en un preset de la lista para activarlo
+- **Clic** en un atajo de teclado inferior para ejecutar la acción (`e`, `n`, `d`, `D`, `/`, `=`, `b`, `r`, `o`, `p`, `m`, `q`)
+- **Rueda de desplazamiento** para navegar por la lista
+
+El ratón se desactiva durante búsquedas, entrada de texto y confirmaciones para evitar acciones accidentales.
+
+### Advertencias de Activación
+
+Al activar un preset, clap compara sus credenciales (API key, URL base, modelo) con todos los presets almacenados:
+
+- **Coincidencia parcial** — Mismo proveedor/URL base pero credenciales diferentes (ej. otra cuenta). Te avisa para que guardes la configuración actual como un nuevo preset antes de cambiar.
+- **Sin coincidencia** — Proveedor completamente nuevo sin coincidencia de URL base ni API key. Te advierte que guardes la configuración actual antes de perderla.
+
+Presiona `y` para continuar o cualquier otra tecla para cancelar.
+
 ### Presets de Proveedores Integrados
 
 Presiona `p` en TUI para explorar más de 17 presets de proveedores integrados:
