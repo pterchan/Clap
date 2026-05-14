@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | **日本語** | [Español](README.es.md)
 
-Claude Code プロファイルマネージャー — ターミナル上で複数の `settings.json` プロファイルを管理する TUI ツールです。
+マルチツールプロファイルマネージャー — Claude Code、Codex、Gemini CLI、OpenCode の設定プロファイルを管理する軽量 TUI ツールです。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -30,13 +30,24 @@ curl -fsSL https://raw.githubusercontent.com/pterchan/Clap/main/install.sh | bas
 
 ```bash
 clap                   # TUI を開く
-clap ls                # プリセット一覧
+clap ls                # 現在のツールのプリセット一覧
 clap use <name>        # プリセットを有効化
 clap current           # 現在のプリセットを表示
 clap diff <name>       # プリセットと現在の設定を比較
 clap backups           # バックアップ一覧
 clap restore <name>    # バックアップを復元
+clap apps              # 対応ツール一覧
+clap app <name>        # デフォルトツールを切替（claude/codex/gemini/opencode）
 ```
+
+### 対応ツール
+
+| ツール | 設定ファイル | 形式 |
+|-----|---------|------|
+| Claude Code | `~/.claude/settings.json` | JSON |
+| Codex | `~/.codex/auth.json` + `~/.codex/config.toml` | JSON + TOML |
+| Gemini CLI | `~/.gemini/.env` | KEY=VALUE |
+| OpenCode | `~/.config/opencode/opencode.json` | JSON |
 
 ### TUI キーバインド
 
@@ -47,5 +58,25 @@ clap restore <name>    # バックアップを復元
 | `d` | 複製 | `R` | 名前を変更 |
 | `D` | 削除 | `/` | フィルタ |
 | `=` | 比較 | `b` | バックアップを表示 |
-| `r` | 再読み込み | `o` | Finder で開く |
-| `q` | 終了 | | |
+| `r` | 再読み込み | `o` | プリセットフォルダを開く |
+| `Tab` | ツール切替 | `p` | 内蔵プリセット |
+| `m` | MCP 管理 | `q` | 終了 |
+
+### 内蔵プロバイダープリセット
+
+TUI で `p` を押して 17 以上の内蔵プロバイダープリセットを参照：
+
+- **Claude Code**: Anthropic 公式、DeepSeek、Kimi、SiliconFlow、OpenRouter、AWS Bedrock、Azure、Groq、Together AI
+- **Codex**: OpenAI 公式、OpenRouter、DeepSeek
+- **Gemini CLI**: Google 公式、OpenRouter
+- **OpenCode**: Anthropic 公式、DeepSeek
+
+選択するだけでテンプレートが自動入力されます — API キーを入力するだけです。
+
+### MCP 管理
+
+TUI で `m` を押して（Claude Code モード）MCP サーバーを管理：
+- `a` — 新しい MCP サーバーを追加（名前 → コマンド → 引数）
+- `D` — 選択した MCP サーバーを削除
+
+変更はアトミック書き込みで `~/.claude/settings.json` に保存されます。
