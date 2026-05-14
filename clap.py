@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-VERSION = "0.2.4"
+VERSION = "0.2.5"
 
 HOME = Path.home()
 CLAP_DIR = HOME / ".clap"
@@ -756,6 +756,23 @@ def _analyze_preset_overlap(target_path):
         return None, None
 
     target_creds = _extract_creds(target_data, app)
+
+    # If live config credentials are already covered by any stored preset, no backup needed
+    try:
+        live_data = _read_settings(app)
+        live_creds = _extract_creds(live_data, app)
+        for p in list_presets():
+            pd, e = parse_preset(p)
+            if e or pd is None:
+                continue
+            pc = _extract_creds(pd, app)
+            key_ok = not live_creds["api_keys"] or bool(live_creds["api_keys"] & pc["api_keys"])
+            url_ok = not live_creds["base_urls"] or bool(live_creds["base_urls"] & pc["base_urls"])
+            if key_ok and url_ok:
+                return None, None
+    except Exception:
+        pass
+
     other_presets = [p for p in list_presets()
                      if p.resolve() != target_path.resolve()]
 

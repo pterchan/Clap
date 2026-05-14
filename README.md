@@ -88,6 +88,7 @@ Mouse input is disabled during search, text input, and confirmation prompts to p
 
 When activating a preset, clap compares its credentials (API key, base URL, model) against all stored presets:
 
+- **No warning** — Live config credentials are already covered by any stored preset (safe to switch).
 - **Partial match** — Same provider or base URL but different credentials (e.g., different account). Prompts you to consider saving the current config as a new preset before switching.
 - **No match** — Completely new provider with no matching base URL or API key in storage. Warns you to save the current config before losing it.
 

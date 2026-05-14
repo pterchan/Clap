@@ -88,6 +88,7 @@ El ratón se desactiva durante búsquedas, entrada de texto y confirmaciones par
 
 Al activar un preset, clap compara sus credenciales (API key, URL base, modelo) con todos los presets almacenados:
 
+- **Sin advertencia** — Las credenciales del live config actual ya están cubiertas por algún preset almacenado (seguro para cambiar).
 - **Coincidencia parcial** — Mismo proveedor/URL base pero credenciales diferentes (ej. otra cuenta). Te avisa para que guardes la configuración actual como un nuevo preset antes de cambiar.
 - **Sin coincidencia** — Proveedor completamente nuevo sin coincidencia de URL base ni API key. Te advierte que guardes la configuración actual antes de perderla.
 
