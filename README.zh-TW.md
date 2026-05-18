@@ -2,20 +2,18 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | **繁體中文** | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-⚡️ 在 Claude Code 中一鍵切換 DeepSeek、Anthropic、矽基流動！
-
-輕量級光速 TUI 設定 & MCP 伺服器管理器，支援 Claude Code、Codex、Gemini CLI 和 OpenCode。告別手動編輯 `.json` 和 `.env` 檔案。
+clap 是一個終端機使用者介面（TUI）程式，用於管理 Claude Code、Codex、Gemini CLI 與 OpenCode 的設定檔（profile）和 MCP 伺服器。每組供應商、模型與權限設定均以預設形式儲存，切換設定時無需手動編輯 `.json` 與 `.env` 檔案。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ 特性
+## 特性
 
-- 🚀 **零設定切換：** 一鍵在 Claude Code、Gemini CLI 等多個工具間切換設定。
-- 🐳 **內建 17+ 供應商預設：** 預先配置了 **DeepSeek V4**、Kimi、OpenRouter、矽基流動、AWS Bedrock、Azure、Groq、Together AI 等。
-- 🔌 **即時 MCP 管理：** 隨時新增/刪除 Model Context Protocol 伺服器，原子寫入保障安全。
-- 🛡️ **安全優先：** 智慧啟用警告，防止覆蓋未備份的憑據。
-- 🖱️ **終端機滑鼠支援：** 終端機內完整滑鼠導覽、點擊和捲動。
-- 🌐 **多語言：** English, 简体中文, 繁體中文, 日本語 — 自動偵測或一鍵切換。
+- **預設切換：** 可為每個工具儲存多個設定預設，並在 TUI 或命令列中啟用其中任意一個。
+- **內建供應商預設：** 為各支援工具的官方端點及常見相容 API 供應商提供預設範本；匯入範本即產生可編輯的預設，只需填入 API key。
+- **MCP 伺服器管理：** 可在 TUI 中新增和刪除 Model Context Protocol 伺服器項目，所有修改均以原子寫入方式儲存。
+- **啟用警告：** 啟用預設前會將目前生效設定與已儲存預設進行比對；當未儲存的憑證不被任何預設覆蓋時顯示警告。
+- **滑鼠支援：** TUI 接受滑鼠輸入，用於切換標籤頁、選擇項目和捲動清單；在搜尋、文字輸入和確認提示期間停用滑鼠輸入。
+- **多語言介面：** English、简体中文、繁體中文、日本語，可自動偵測或透過 `clap lang` 命令切換。
 
 ## 安裝
 
@@ -44,6 +42,7 @@ clap                   # 開啟 TUI
 clap ls                # 列出目前工具的預設
 clap use <name>        # 啟用預設
 clap current           # 顯示目前啟用的預設
+clap backup <name>     # 將目前設定儲存為預設
 clap diff <name>       # 比對預設與目前設定
 clap backups           # 列出備份
 clap restore <name>    # 復原備份
@@ -96,14 +95,7 @@ TUI 支援滑鼠操作：
 
 ### 內建供應商預設
 
-在 TUI 中按 `p` 瀏覽 17+ 個內建供應商預設，包括：
-
-- **Claude Code**: Anthropic 官方、DeepSeek、Kimi、矽基流動、OpenRouter、AWS Bedrock、Azure、Groq、Together AI
-- **Codex**: OpenAI 官方、OpenRouter、DeepSeek
-- **Gemini CLI**: Google 官方、OpenRouter
-- **OpenCode**: Anthropic 官方、DeepSeek
-
-選擇一個即可自動填入範本——只需填入 API key。
+在 TUI 中按 `p` 可瀏覽內建預設範本。範本涵蓋各支援工具的官方端點及若干相容 API 供應商。選擇範本後，該範本會被複製到預設目錄並開啟編輯器，用於填入 API key。
 
 ### MCP 管理
 

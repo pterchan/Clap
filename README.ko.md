@@ -2,20 +2,18 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | **한국어** | [日本語](README.ja.md) | [Español](README.es.md)
 
-⚡️ Claude Code에서 DeepSeek, Anthropic, SiliconFlow를 원클릭으로 전환하세요!
-
-Claude Code, Codex, Gemini CLI, OpenCode를 위한 초고속 TUI 프로필 & MCP 서버 관리자입니다. 더 이상 `.json`과 `.env` 파일을 수동으로 편집하지 마세요.
+clap은 Claude Code, Codex, Gemini CLI, OpenCode의 구성 프로필과 MCP 서버를 관리하는 터미널 사용자 인터페이스(TUI) 애플리케이션입니다. 공급자, 모델, 권한 설정은 각각 프리셋으로 저장되어 구성을 전환할 때 `.json` 및 `.env` 파일을 수동으로 편집할 필요가 없습니다.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ 기능
+## 기능
 
-- 🚀 **제로 설정 전환:** Claude Code, Gemini CLI 등에서 프로필을 즉시 전환합니다.
-- 🐳 **17개 이상의 내장 제공자プリセット:** **DeepSeek V4**, Kimi, OpenRouter, SiliconFlow, AWS Bedrock, Azure, Groq, Together AI 등이 사전 설정되어 있습니다.
-- 🔌 **실시간 MCP 관리:** Model Context Protocol 서버를 즉시 추가/제거하며 원자적 쓰기로 안전하게 저장합니다.
-- 🛡️ **안전 최우선:** 백업되지 않은 자격 증명 덮어쓰기를 방지하는 스마트 활성화 경고.
-- 🖱️ **터미널 마우스 지원:** 터미널 내에서 완전한 마우스 네비게이션, 클릭 및 스크롤.
-- 🌐 **다국어 지원:** English, 简体中文, 繁體中文, 日本語 — 자동 감지 또는 한 줄 명령어로 전환.
+- **프리셋 전환:** 도구별로 여러 구성 프리셋을 저장하고 TUI 또는 명령줄에서 원하는 프리셋을 활성화할 수 있습니다.
+- **내장 제공자 프리셋:** 각 지원 도구의 공식 엔드포인트와 일반적인 호환 API 제공자를 위한 프리셋 템플릿을 포함하고 있습니다. 템플릿을 가져오면 편집 가능한 프리셋이 생성되며 API 키만 입력하면 됩니다.
+- **MCP 서버 관리:** TUI에서 Model Context Protocol 서버를 추가하고 제거할 수 있으며, 모든 변경 사항은 원자적 쓰기로 저장됩니다.
+- **활성화 경고:** 프리셋을 활성화하기 전에 현재 live config를 저장된 프리셋과 비교하며, 저장되지 않은 인증 정보가 어떤 프리셋에도 포함되지 않을 경우 경고가 표시됩니다.
+- **마우스 지원:** TUI는 탭 전환, 항목 선택, 목록 스크롤에 마우스 입력을 받습니다. 검색, 텍스트 입력, 확인 프롬프트 중에는 마우스 입력이 비활성화됩니다.
+- **다국어 지원:** English, 简体中文, 繁體中文, 日本語를 지원하며 자동 감지 또는 `clap lang` 명령으로 전환할 수 있습니다.
 
 ## 설치
 
@@ -44,6 +42,7 @@ clap                   # TUI 열기
 clap ls                # 현재 도구의 프리셋 목록
 clap use <name>        # 프리셋 활성화
 clap current           # 현재 활성화된 프리셋 표시
+clap backup <name>     # 현재 설정을 프리셋으로 저장
 clap diff <name>       # 프리셋과 현재 설정 비교
 clap backups           # 백업 목록
 clap restore <name>    # 백업 복원
@@ -96,14 +95,7 @@ TUI에서 마우스를 사용할 수 있습니다:
 
 ### 내장 제공자 프리셋
 
-TUI에서 `p`를 눌러 17개 이상의 내장 제공자 프리셋을 탐색하세요:
-
-- **Claude Code**: Anthropic 공식, DeepSeek, Kimi, SiliconFlow, OpenRouter, AWS Bedrock, Azure, Groq, Together AI
-- **Codex**: OpenAI 공식, OpenRouter, DeepSeek
-- **Gemini CLI**: Google 공식, OpenRouter
-- **OpenCode**: Anthropic 공식, DeepSeek
-
-하나를 선택하면 템플릿이 자동으로 채워집니다 — API 키만 입력하세요.
+TUI에서 `p`를 누르면 내장 프리셋 템플릿을 탐색할 수 있습니다. 템플릿은 각 지원 도구의 공식 엔드포인트와 여러 호환 API 제공자를 다룹니다. 템플릿을 선택하면 프리셋 디렉터리로 복사되고 API 키를 입력할 편집기가 열립니다.
 
 ### MCP 관리
 

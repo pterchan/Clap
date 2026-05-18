@@ -2,20 +2,18 @@
 
 **English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-⚡️ Switch between DeepSeek, Anthropic, and SiliconFlow in Claude Code with one click!
-
-A lightning-fast TUI profile & MCP server manager for Claude Code, Codex, Gemini CLI, and OpenCode. Stop manually editing `.json` and `.env` files.
+clap is a terminal user interface (TUI) application for managing configuration profiles and MCP servers of Claude Code, Codex, Gemini CLI, and OpenCode. Each provider, model, and permission setup is stored as a preset, so switching configurations does not require manual editing of `.json` and `.env` files.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- 🚀 **Zero-Config Switching:** Instantly swap profiles for Claude Code, Gemini CLI, and more.
-- 🐳 **Built-in 17+ Provider Presets:** Pre-charged setups for **DeepSeek V4**, Kimi, OpenRouter, SiliconFlow, AWS Bedrock, Azure, Groq, Together AI, and more.
-- 🔌 **Live MCP Manager:** Add/remove Model Context Protocol servers on the fly with atomic writes.
-- 🛡️ **Safety First:** Smart activation warnings to prevent overwriting un-backed-up credentials.
-- 🖱️ **Terminal Mouse Support:** Full mouse navigation, clicking, and scrolling inside your terminal.
-- 🌐 **Multi-language:** English, 简体中文, 繁體中文, 日本語 — auto-detected or one command to switch.
+- **Profile switching:** Multiple configuration presets can be stored per tool and activated from the TUI or the command line.
+- **Built-in provider presets:** Preset templates are included for the official endpoint and common compatible API providers of each supported tool. Importing a template creates an editable preset; only an API key needs to be entered.
+- **MCP server management:** Model Context Protocol server entries can be added and removed in the TUI; all changes are written with atomic writes.
+- **Activation warnings:** Before a preset is activated, the current live configuration is compared against the stored presets, and a warning is shown when unsaved credentials are not covered by any preset.
+- **Mouse support:** The TUI accepts mouse input for tab switching, item selection, and list scrolling. Mouse input is disabled during search, text input, and confirmation prompts.
+- **Multi-language interface:** English, 简体中文, 繁體中文, and 日本語, selected automatically or with the `clap lang` command.
 
 ## Install
 
@@ -44,6 +42,7 @@ clap                   # open TUI
 clap ls                # list presets for current app
 clap use <name>        # activate a preset
 clap current           # show active preset name
+clap backup <name>     # save current live config as a preset
 clap diff <name>       # diff preset against current settings
 clap backups           # list backups
 clap restore <name>    # restore a backup
@@ -96,14 +95,7 @@ Press `y` to proceed or any other key to cancel.
 
 ### Built-in Provider Presets
 
-Press `p` in TUI to browse 17+ built-in provider presets, including:
-
-- **Claude Code**: Anthropic official, DeepSeek, Kimi, SiliconFlow, OpenRouter, AWS Bedrock, Azure, Groq, Together AI
-- **Codex**: OpenAI official, OpenRouter, DeepSeek
-- **Gemini CLI**: Google official, OpenRouter
-- **OpenCode**: Anthropic official, DeepSeek
-
-Select one to auto-fill the template — just add your API key.
+Press `p` in the TUI to browse the built-in preset templates. The templates cover the official endpoint and a number of compatible API providers for each supported tool. Selecting a template copies it into the presets directory and opens the editor for entering the API key.
 
 ### MCP Management
 

@@ -2,20 +2,18 @@
 
 [English](README.md) | **简体中文** | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Español](README.es.md)
 
-⚡️ 在 Claude Code 中一键切换 DeepSeek、Anthropic、硅基流动！
-
-轻量级光速 TUI 配置 & MCP 服务器管理器，支持 Claude Code、Codex、Gemini CLI 和 OpenCode。告别手动编辑 `.json` 和 `.env` 文件。
+clap 是一个终端用户界面（TUI）程序，用于管理 Claude Code、Codex、Gemini CLI 与 OpenCode 的配置档案（profile）和 MCP 服务器。每组供应商、模型与权限设置均以预设形式保存，切换配置时无需手动编辑 `.json` 和 `.env` 文件。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ 特性
+## 特性
 
-- 🚀 **零配置切换：** 一键在 Claude Code、Gemini CLI 等多个工具间切换配置。
-- 🐳 **内置 17+ 供应商预设：** 预配置了 **DeepSeek V4**、Kimi、OpenRouter、硅基流动、AWS Bedrock、Azure、Groq、Together AI 等。
-- 🔌 **实时 MCP 管理：** 随时添加/删除 Model Context Protocol 服务器，原子写入保障安全。
-- 🛡️ **安全优先：** 智能激活警告，防止覆盖未备份的凭据。
-- 🖱️ **终端鼠标支持：** 终端内完整鼠标导航、点击和滚动。
-- 🌐 **多语言：** English, 简体中文, 繁體中文, 日本語 — 自动检测或一键切换。
+- **预设切换：** 可为每个工具保存多个配置预设，并在 TUI 或命令行中激活其中任意一个。
+- **内置供应商预设：** 为各支持工具的官方端点及常见兼容 API 供应商提供预设模板；导入模板即生成可编辑的预设，只需填入 API key。
+- **MCP 服务器管理：** 可在 TUI 中添加和删除 Model Context Protocol 服务器条目，所有修改均以原子写入方式保存。
+- **激活警告：** 激活预设前会将当前生效配置与已存储预设进行比对；当未保存的凭据不被任何预设覆盖时显示警告。
+- **鼠标支持：** TUI 接受鼠标输入，用于切换标签页、选择条目和滚动列表；在搜索、文本输入和确认提示期间禁用鼠标输入。
+- **多语言界面：** English、简体中文、繁體中文、日本語，可自动检测或通过 `clap lang` 命令切换。
 
 ## 安装
 
@@ -44,6 +42,7 @@ clap                   # 打开 TUI
 clap ls                # 列出当前工具的预设
 clap use <name>        # 激活预设
 clap current           # 显示当前激活的预设
+clap backup <name>     # 将当前配置保存为预设
 clap diff <name>       # 对比预设与当前配置
 clap backups           # 列出备份
 clap restore <name>    # 恢复备份
@@ -96,14 +95,7 @@ TUI 支持鼠标操作：
 
 ### 内置供应商预设
 
-在 TUI 中按 `p` 浏览 17+ 个内置供应商预设，包括：
-
-- **Claude Code**: Anthropic 官方、DeepSeek、Kimi、硅基流动、OpenRouter、AWS Bedrock、Azure、Groq、Together AI
-- **Codex**: OpenAI 官方、OpenRouter、DeepSeek
-- **Gemini CLI**: Google 官方、OpenRouter
-- **OpenCode**: Anthropic 官方、DeepSeek
-
-选择一个即可自动填充模板——只需填入 API key。
+在 TUI 中按 `p` 可浏览内置预设模板。模板覆盖各支持工具的官方端点及若干兼容 API 供应商。选择模板后，该模板会被复制到预设目录并打开编辑器，用于填入 API key。
 
 ### MCP 管理
 

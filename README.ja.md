@@ -2,20 +2,18 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | **日本語** | [Español](README.es.md)
 
-⚡️ Claude Code で DeepSeek、Anthropic、SiliconFlow をワンクリックで切り替え！
-
-Claude Code、Codex、Gemini CLI、OpenCode 向けの高速 TUI プロファイル & MCP サーバーマネージャー。`.json` や `.env` ファイルの手動編集はもう不要です。
+clap は Claude Code、Codex、Gemini CLI、OpenCode の設定プロファイルと MCP サーバーを管理するターミナルユーザーインターフェース（TUI）アプリケーションです。プロバイダー、モデル、権限の設定はそれぞれプリセットとして保存され、設定の切り替え時に `.json` ファイルや `.env` ファイルを手動で編集する必要はありません。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ 特徴
+## 特徴
 
-- 🚀 **ゼロ設定切替：** Claude Code、Gemini CLI などのプロファイルを瞬時に切り替え。
-- 🐳 **17以上の内蔵プロバイダープリセット：** **DeepSeek V4**、Kimi、OpenRouter、SiliconFlow、AWS Bedrock、Azure、Groq、Together AI などをプリセット済み。
-- 🔌 **ライブ MCP 管理：** Model Context Protocol サーバーをアトミック書き込みでその場で追加/削除。
-- 🛡️ **安全第一：** 未バックアップの認証情報の上書きを防ぐスマートな有効化警告。
-- 🖱️ **端末マウスサポート：** 端末内での完全なマウスナビゲーション、クリック、スクロール。
-- 🌐 **多言語対応：** English, 简体中文, 繁體中文, 日本語 — 自動検出またはワンコマンドで切替。
+- **プリセット切替：** ツールごとに複数の設定プリセットを保存し、TUI またはコマンドラインから任意のプリセットを有効化できます。
+- **内蔵プロバイダープリセット：** 各対応ツールの公式エンドポイントおよび一般的な互換 API プロバイダー向けのプリセットテンプレートを同梱しています。テンプレートを取り込むと編集可能なプリセットが作成され、API キーを入力するだけで使用できます。
+- **MCP サーバー管理：** TUI で Model Context Protocol サーバーを追加・削除できます。変更はすべてアトミック書き込みで保存されます。
+- **有効化時の警告：** プリセットを有効化する前に、現在の live config が保存済みプリセットと比較され、保存されていない認証情報がどのプリセットでもカバーされていない場合に警告が表示されます。
+- **マウス対応：** TUI はタブの切り替え、項目の選択、リストのスクロールにマウス入力を受け付けます。検索中、テキスト入力中、確認プロンプト表示中はマウス入力が無効になります。
+- **多言語対応：** English、简体中文、繁體中文、日本語に対応しており、自動検出または `clap lang` コマンドで切り替えられます。
 
 ## インストール
 
@@ -44,6 +42,7 @@ clap                   # TUI を開く
 clap ls                # 現在のツールのプリセット一覧
 clap use <name>        # プリセットを有効化
 clap current           # 現在のプリセットを表示
+clap backup <name>     # 現在の設定をプリセットとして保存
 clap diff <name>       # プリセットと現在の設定を比較
 clap backups           # バックアップ一覧
 clap restore <name>    # バックアップを復元
@@ -96,14 +95,7 @@ TUI はマウス操作に対応しています：
 
 ### 内蔵プロバイダープリセット
 
-TUI で `p` を押して 17 以上の内蔵プロバイダープリセットを参照：
-
-- **Claude Code**: Anthropic 公式、DeepSeek、Kimi、SiliconFlow、OpenRouter、AWS Bedrock、Azure、Groq、Together AI
-- **Codex**: OpenAI 公式、OpenRouter、DeepSeek
-- **Gemini CLI**: Google 公式、OpenRouter
-- **OpenCode**: Anthropic 公式、DeepSeek
-
-選択するだけでテンプレートが自動入力されます — API キーを入力するだけです。
+TUI で `p` を押すと、内蔵のプリセットテンプレートを参照できます。テンプレートは各対応ツールの公式エンドポイントおよび複数の互換 API プロバイダーを対象としています。テンプレートを選択すると、プリセットディレクトリにコピーされ、API キーを入力するためのエディタが開きます。
 
 ### MCP 管理
 
