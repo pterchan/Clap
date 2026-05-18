@@ -44,6 +44,7 @@ clap                   # abrir TUI
 clap ls                # listar presets de la herramienta actual
 clap use <nombre>      # activar preset
 clap current           # mostrar preset activo
+clap backup <nombre>   # guardar configuración actual como preset
 clap diff <nombre>     # comparar preset con configuración actual
 clap backups           # listar copias de seguridad
 clap restore <nombre>  # restaurar copia de seguridad

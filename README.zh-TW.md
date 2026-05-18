@@ -44,6 +44,7 @@ clap                   # 開啟 TUI
 clap ls                # 列出目前工具的預設
 clap use <name>        # 啟用預設
 clap current           # 顯示目前啟用的預設
+clap backup <name>     # 將目前設定儲存為預設
 clap diff <name>       # 比對預設與目前設定
 clap backups           # 列出備份
 clap restore <name>    # 復原備份

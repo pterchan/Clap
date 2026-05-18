@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-VERSION = "0.2.5"
+VERSION = "0.2.7"
 
 HOME = Path.home()
 CLAP_DIR = HOME / ".clap"
@@ -32,6 +32,7 @@ MAX_BACKUPS = 30
 MODE_NEW = "new"
 MODE_DUP = "dup"
 MODE_RENAME = "rename"
+MODE_BACKUP = "backup"
 
 LANG_FILE = CLAP_DIR / "lang"
 _cur_lang = "en"
@@ -521,6 +522,19 @@ def _write_preset_file(path, data, app):
         _atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
 
 
+def _preset_path_for_name(app, name):
+    """Resolve a preset name under the app's presets dir."""
+    ext = _preset_ext(app)
+    target = app.presets_dir / f"{name}{ext}"
+    try:
+        ok = str(target.resolve()).startswith(str(app.presets_dir.resolve()))
+    except Exception:
+        ok = False
+    if not name or os.sep in name or (os.altsep and os.altsep in name) or not ok:
+        raise ValueError(_t("msg.invalid_name"))
+    return target
+
+
 def list_presets():
     """List preset files for the current app."""
     app = _app()
@@ -560,6 +574,27 @@ def _read_settings(app):
         if app.fmt == "json5":
             text = _strip_json5_comments(text)
         return json.loads(text)
+
+
+def _has_live_settings(app):
+    if app.name == "codex":
+        return app.settings_file.exists() or (app.settings_file2 and app.settings_file2.exists())
+    return app.settings_file.exists()
+
+
+def backup_live_as_preset(name):
+    """Save the current live settings as a named preset for the active app."""
+    app = _app()
+    target = _preset_path_for_name(app, name)
+    if target.exists():
+        raise FileExistsError(_t("msg.already_exists", name=name))
+    if not _has_live_settings(app):
+        raise FileNotFoundError(_t("msg.no_live_config"))
+    data = _read_settings(app)
+    _write_preset_file(target, data, app)
+    _chmod600(target)
+    _atomic_write(app.active_file, target.stem)
+    return target
 
 
 def _prune_backups_lazy(max_keep=MAX_BACKUPS):
@@ -1084,6 +1119,7 @@ class TUI:
             ("e", _t("hint.edit")), ("n", _t("hint.new")), ("D", _t("hint.delete")),
             ("|", ""),
             ("/", _t("hint.filter")), ("=", _t("hint.diff")), ("b", _t("hint.backups")),
+            ("B", _t("hint.backup_live")),
             ("|", ""),
             ("Tab", _t("hint.app")), ("p", _t("hint.presets")),
         ]
@@ -1341,6 +1377,13 @@ class TUI:
         self.input_prompt = _t("prompt.rename_to")
         self.input_buffer = self.presets[self.selected].stem
 
+    def backup_live_config(self):
+        self.input_mode = MODE_BACKUP
+        app = _app()
+        ext = _preset_ext(app)
+        self.input_prompt = _t("prompt.backup_as", ext=ext)
+        self.input_buffer = ""
+
     def delete_selected(self):
         if not self.presets:
             return
@@ -1391,6 +1434,7 @@ class TUI:
                 ("d", _t("hint.dup")),
                 ("R", _t("hint.rename")),
                 ("D", _t("hint.delete")),
+                ("B", _t("hint.backup_live")),
             ]),
             (_t("help.view_search"), [
                 ("/", _t("hint.filter")),
@@ -1444,9 +1488,9 @@ class TUI:
         if key in (10, 13):
             name = self.input_buffer.strip()
             if name:
-                ext = _preset_ext(app)
-                target = app.presets_dir / f"{name}{ext}"
-                if not str(target.resolve()).startswith(str(app.presets_dir.resolve())):
+                try:
+                    target = _preset_path_for_name(app, name)
+                except ValueError:
                     self.set_message(_t("msg.invalid_name"), "error")
                     return
                 if target.exists():
@@ -1472,6 +1516,15 @@ class TUI:
                     self.refresh()
                     self._select_by_path(target)
                     self.set_message(_t("msg.renamed", name=name), "success")
+                elif self.input_mode == MODE_BACKUP:
+                    try:
+                        target = backup_live_as_preset(name)
+                        self.refresh()
+                        self._select_by_path(target)
+                        self.update_active()
+                        self.set_message(_t("msg.backed_up_live", name=name), "success")
+                    except Exception as e:
+                        self.set_message(_t("msg.backup_live_failed", error=str(e)), "error")
             self.input_mode = None
             self.input_buffer = ""
         elif key == 27:
@@ -1505,6 +1558,8 @@ class TUI:
             self.diff_selected()
         elif key == "b":
             self.open_backups()
+        elif key == "B":
+            self.backup_live_config()
         elif key == "r":
             self.refresh()
             self.update_active()
@@ -1954,6 +2009,8 @@ class TUI:
                 self.diff_selected()
             elif key == ord('b'):
                 self.open_backups()
+            elif key == ord('B'):
+                self.backup_live_config()
             elif key == ord('r'):
                 self.refresh()
                 self.update_active()
@@ -1999,6 +2056,7 @@ L10N = {
         "hint.filter": "Filter",
         "hint.diff": "Diff",
         "hint.backups": "Backups",
+        "hint.backup_live": "Backup Live",
         "hint.reload": "Reload",
         "hint.finder": "Finder",
         "hint.app": "App",
@@ -2040,6 +2098,9 @@ L10N = {
         "msg.diff_viewed": "Diff viewed",
         "msg.filter_cleared": "Filter cleared",
         "msg.no_backups": "No backups available",
+        "msg.no_live_config": "No live config found",
+        "msg.backed_up_live": "Saved live config as preset: {name}",
+        "msg.backup_live_failed": "Backup failed: {error}",
         "msg.restored": "Restored: {name}",
         "msg.restore_failed": "Restore failed: {error}",
         "msg.no_providers": "No built-in providers for this app",
@@ -2074,6 +2135,7 @@ L10N = {
         "screen.mcp_footer": "↑↓: select  a: add  D: delete  Esc: back",
         # Input prompts
         "prompt.new_name": "New preset name (without {ext}): ",
+        "prompt.backup_as": "Backup live config as preset (without {ext}): ",
         "prompt.dup_as": "Duplicate as: ",
         "prompt.rename_to": "Rename to: ",
         "prompt.mcp_name": "MCP server name (e.g. fetch): ",
@@ -2090,6 +2152,11 @@ L10N = {
         "cli.unknown": "(unknown)",
         "cli.not_found": "Preset not found: {name}",
         "cli.invalid_preset": "Invalid preset name: {name}",
+        "cli.preset_exists": "Preset already exists: {name}",
+        "cli.no_live_config": "No live config found.",
+        "cli.backed_up_live": "Saved live config as preset: {name}",
+        "cli.backup_failed": "Backup failed: {error}",
+        "cli.backup_usage": "Usage: clap backup <name>",
         "cli.no_backups": "No backups found.",
         "cli.invalid_backup": "Invalid backup name: {name}",
         "cli.backup_not_found": "Backup not found: {name}",
@@ -2132,6 +2199,7 @@ L10N = {
         "hint.filter": "筛选",
         "hint.diff": "对比",
         "hint.backups": "备份",
+        "hint.backup_live": "备份当前",
         "hint.reload": "刷新",
         "hint.finder": "打开",
         "hint.app": "切换",
@@ -2171,6 +2239,9 @@ L10N = {
         "msg.diff_viewed": "已查看对比",
         "msg.filter_cleared": "筛选已清除",
         "msg.no_backups": "暂无备份",
+        "msg.no_live_config": "未找到当前配置",
+        "msg.backed_up_live": "已将当前配置保存为预设：{name}",
+        "msg.backup_live_failed": "备份失败：{error}",
         "msg.restored": "已恢复：{name}",
         "msg.restore_failed": "恢复失败：{error}",
         "msg.no_providers": "此工具无内置供应商预设",
@@ -2202,6 +2273,7 @@ L10N = {
         "screen.mcp_empty": "（未配置 MCP 服务器）",
         "screen.mcp_footer": "↑↓: 选择  a: 添加  D: 删除  Esc: 返回",
         "prompt.new_name": "新建预设名称（不含 {ext}）：",
+        "prompt.backup_as": "将当前配置备份为预设（不含 {ext}）：",
         "prompt.dup_as": "复制为：",
         "prompt.rename_to": "重命名为：",
         "prompt.mcp_name": "MCP 服务器名称（例如 fetch）：",
@@ -2217,6 +2289,11 @@ L10N = {
         "cli.unknown": "（未知）",
         "cli.not_found": "预设未找到：{name}",
         "cli.invalid_preset": "预设名称无效：{name}",
+        "cli.preset_exists": "预设已存在：{name}",
+        "cli.no_live_config": "未找到当前配置。",
+        "cli.backed_up_live": "已将当前配置保存为预设：{name}",
+        "cli.backup_failed": "备份失败：{error}",
+        "cli.backup_usage": "用法：clap backup <name>",
         "cli.no_backups": "暂无备份。",
         "cli.invalid_backup": "备份名称无效：{name}",
         "cli.backup_not_found": "备份未找到：{name}",
@@ -2258,6 +2335,7 @@ L10N = {
         "hint.filter": "篩選",
         "hint.diff": "比對",
         "hint.backups": "備份",
+        "hint.backup_live": "備份目前",
         "hint.reload": "重新整理",
         "hint.finder": "開啟",
         "hint.app": "切換",
@@ -2297,6 +2375,9 @@ L10N = {
         "msg.diff_viewed": "已檢視比對",
         "msg.filter_cleared": "篩選已清除",
         "msg.no_backups": "暫無備份",
+        "msg.no_live_config": "未找到目前設定",
+        "msg.backed_up_live": "已將目前設定儲存為預設：{name}",
+        "msg.backup_live_failed": "備份失敗：{error}",
         "msg.restored": "已復原：{name}",
         "msg.restore_failed": "復原失敗：{error}",
         "msg.no_providers": "此工具無內建供應商預設",
@@ -2328,6 +2409,7 @@ L10N = {
         "screen.mcp_empty": "（未設定 MCP 伺服器）",
         "screen.mcp_footer": "↑↓: 選擇  a: 新增  D: 刪除  Esc: 返回",
         "prompt.new_name": "新增預設名稱（不含 {ext}）：",
+        "prompt.backup_as": "將目前設定備份為預設（不含 {ext}）：",
         "prompt.dup_as": "複製為：",
         "prompt.rename_to": "重新命名為：",
         "prompt.mcp_name": "MCP 伺服器名稱（例如 fetch）：",
@@ -2343,6 +2425,11 @@ L10N = {
         "cli.unknown": "（未知）",
         "cli.not_found": "預設未找到：{name}",
         "cli.invalid_preset": "預設名稱無效：{name}",
+        "cli.preset_exists": "預設已存在：{name}",
+        "cli.no_live_config": "未找到目前設定。",
+        "cli.backed_up_live": "已將目前設定儲存為預設：{name}",
+        "cli.backup_failed": "備份失敗：{error}",
+        "cli.backup_usage": "用法：clap backup <name>",
         "cli.no_backups": "暫無備份。",
         "cli.invalid_backup": "備份名稱無效：{name}",
         "cli.backup_not_found": "備份未找到：{name}",
@@ -2384,6 +2471,7 @@ L10N = {
         "hint.filter": "フィルタ",
         "hint.diff": "比較",
         "hint.backups": "バックアップ",
+        "hint.backup_live": "現設定保存",
         "hint.reload": "再読み込み",
         "hint.finder": "開く",
         "hint.app": "切替",
@@ -2423,6 +2511,9 @@ L10N = {
         "msg.diff_viewed": "差分を表示しました",
         "msg.filter_cleared": "フィルタをクリアしました",
         "msg.no_backups": "バックアップがありません",
+        "msg.no_live_config": "現在の設定が見つかりません",
+        "msg.backed_up_live": "現在の設定をプリセットとして保存しました: {name}",
+        "msg.backup_live_failed": "バックアップ失敗: {error}",
         "msg.restored": "復元済み: {name}",
         "msg.restore_failed": "復元失敗: {error}",
         "msg.no_providers": "このツールに内蔵プロバイダーはありません",
@@ -2454,6 +2545,7 @@ L10N = {
         "screen.mcp_empty": "（MCPサーバー未設定）",
         "screen.mcp_footer": "↑↓: 選択  a: 追加  D: 削除  Esc: 戻る",
         "prompt.new_name": "新規プリセット名（{ext} を除く）：",
+        "prompt.backup_as": "現在の設定をプリセットとして保存（{ext} を除く）：",
         "prompt.dup_as": "複製先：",
         "prompt.rename_to": "名前変更先：",
         "prompt.mcp_name": "MCPサーバー名（例: fetch）：",
@@ -2469,6 +2561,11 @@ L10N = {
         "cli.unknown": "（不明）",
         "cli.not_found": "プリセットが見つかりません: {name}",
         "cli.invalid_preset": "無効なプリセット名: {name}",
+        "cli.preset_exists": "プリセットは既に存在します: {name}",
+        "cli.no_live_config": "現在の設定が見つかりません。",
+        "cli.backed_up_live": "現在の設定をプリセットとして保存しました: {name}",
+        "cli.backup_failed": "バックアップ失敗: {error}",
+        "cli.backup_usage": "使い方: clap backup <name>",
         "cli.no_backups": "バックアップがありません。",
         "cli.invalid_backup": "無効なバックアップ名: {name}",
         "cli.backup_not_found": "バックアップが見つかりません: {name}",
@@ -2611,6 +2708,27 @@ def cli_main():
         if cmd == "current":
             print(get_active() or _t("cli.unknown"))
             return
+        if cmd == "backup":
+            if len(sys.argv) < 3:
+                print(_t("cli.backup_usage"))
+                sys.exit(1)
+            name = sys.argv[2]
+            try:
+                target = backup_live_as_preset(name)
+            except ValueError:
+                print(_t("cli.invalid_preset", name=name))
+                sys.exit(1)
+            except FileExistsError:
+                print(_t("cli.preset_exists", name=name))
+                sys.exit(1)
+            except FileNotFoundError:
+                print(_t("cli.no_live_config"))
+                sys.exit(1)
+            except Exception as e:
+                print(_t("cli.backup_failed", error=str(e)))
+                sys.exit(1)
+            print(_t("cli.backed_up_live", name=target.stem))
+            return
         if cmd == "diff" and len(sys.argv) >= 3:
             ext = _preset_ext(app)
             target = app.presets_dir / f"{sys.argv[2]}{ext}"
@@ -2676,6 +2794,7 @@ def cli_main():
             print("  clap ls                  list all presets")
             print("  clap use <name>          activate by name")
             print("  clap current             print active preset name")
+            print("  clap backup <name>       save current live config as a preset")
             print("  clap diff <name>         diff preset against current settings")
             print("  clap backups             list available backups")
             print("  clap restore <name>      restore a backup (name or timestamp)")

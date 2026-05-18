@@ -44,6 +44,7 @@ clap                   # open TUI
 clap ls                # list presets for current app
 clap use <name>        # activate a preset
 clap current           # show active preset name
+clap backup <name>     # save current live config as a preset
 clap diff <name>       # diff preset against current settings
 clap backups           # list backups
 clap restore <name>    # restore a backup

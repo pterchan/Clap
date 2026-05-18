@@ -44,6 +44,7 @@ clap                   # TUI 열기
 clap ls                # 현재 도구의 프리셋 목록
 clap use <name>        # 프리셋 활성화
 clap current           # 현재 활성화된 프리셋 표시
+clap backup <name>     # 현재 설정을 프리셋으로 저장
 clap diff <name>       # 프리셋과 현재 설정 비교
 clap backups           # 백업 목록
 clap restore <name>    # 백업 복원
